@@ -33,7 +33,7 @@ def save_and_plot_losses(num_epochs, train_losses, test_losses, dir: str = "trai
     plt.close()
 
     with open(loss_file, "w") as f:
-        f.write("Epoch, Train Loss, Test Loss\n")
+        f.write("Epoch, train_loss, test_loss\n")
         for epoch, train_loss, test_loss in zip(epochs, train_losses, test_losses):
             f.write(f"{epoch}, {train_loss:.4f}, {test_loss:.4f}\n")
 
