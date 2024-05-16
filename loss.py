@@ -21,9 +21,12 @@ def SSIM(x: torch.Tensor, y: torch.Tensor, C1: float = 0.01**2, C2: float = 0.03
     SSIM = SSIM_n / SSIM_d
     return torch.clamp((1 - SSIM) / 2, 0, 1)
 
-def image_loss(reconstructed: torch.Tensor, target: torch.Tensor, alpha: float = 0.85) -> torch.Tensor:
-    l1_loss = F.l1_loss(reconstructed, target, reduction='mean')
-    ssim_loss = SSIM(reconstructed, target).mean()
+def image_loss(reconstructed: torch.Tensor, target: torch.Tensor, mask: torch.Tensor, alpha: float = 0.85) -> torch.Tensor:
+    """
+    Computes the L1 and SSIM loss for the reconstructed images, but only in places where the features are visible in both images, to account for occluded features
+    """
+    l1_loss = F.l1_loss(reconstructed * mask, target * mask, reduction='mean')
+    ssim_loss = (SSIM(reconstructed, target) * mask).mean()
     return alpha * ssim_loss + (1 - alpha) * l1_loss
 
 def disparity_smoothness_loss(disp: torch.Tensor, img: torch.Tensor) -> torch.Tensor:
@@ -41,6 +44,26 @@ def disparity_smoothness_loss(disp: torch.Tensor, img: torch.Tensor) -> torch.Te
 
     return (smoothness_x.abs().mean() + smoothness_y.abs().mean())
 
+# TODO: Double check if it makes sense to mask occluded features
+def create_occlusion_mask(disparity: torch.Tensor, direction: str) -> torch.Tensor:
+    batch_size, _, height, width = disparity.shape
+    mask = torch.ones_like(disparity, dtype=torch.float32)
+
+    grid_x, grid_y = torch.meshgrid(torch.arange(width, device=disparity.device), torch.arange(height, device=disparity.device))
+    grid_x = grid_x.unsqueeze(0).expand(batch_size, -1, -1).float()
+    
+    if direction == 'right':
+        occlusion = grid_x + disparity.squeeze(1) >= width
+    elif direction == 'left':
+        occlusion = grid_x - disparity.squeeze(1) < 0
+    else:
+        raise ValueError(f"Invalid direction {direction}. Use 'right' or 'left'.")
+
+    occlusion = occlusion.unsqueeze(1)
+    mask[occlusion] = 0
+    
+    return mask
+
 def total_loss(left_image: torch.Tensor, 
                right_image: torch.torch.Tensor, 
                reconstructed_right: torch.Tensor, 
@@ -48,8 +71,11 @@ def total_loss(left_image: torch.Tensor,
                disparity: torch.Tensor, 
                alpha: float = 0.85, 
                smoothness_weight: float = 0.1) -> torch.Tensor:
-    right_reconstruction_loss = image_loss(reconstructed_right, right_image, alpha)
-    left_reconstruction_loss = image_loss(reconstructed_left, left_image, alpha)
+    mask_right = create_occlusion_mask(disparity, 'right')
+    mask_left = create_occlusion_mask(disparity, 'left')
+
+    right_reconstruction_loss = image_loss(reconstructed_right, right_image, mask_right, alpha)
+    left_reconstruction_loss = image_loss(reconstructed_left, left_image, mask_right, alpha)
     
     smoothness_loss = smoothness_weight * disparity_smoothness_loss(disparity, left_image)
     reconstruction_loss = left_reconstruction_loss + right_reconstruction_loss

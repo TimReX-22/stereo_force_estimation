@@ -5,24 +5,30 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from image_reconstruction import ImageReconstructionNetwork, ImageReconstructionConfig
+from typing import Optional
 
-def load_image(image_path, transform=None):
+def load_image(image_path: str, transform: Optional[transforms.Compose] = None):
     image = Image.open(image_path).convert('RGB')
     if transform:
         image = transform(image).unsqueeze(0)
     return image
 
-def save_image(tensor, path):
-    image = tensor.squeeze(0).permute(1, 2, 0).cpu().numpy()
+def save_image(img_tensor: torch.Tensor, path: str):
+    image = img_tensor.squeeze(0).permute(1, 2, 0).cpu().numpy()
     image = (image * 255).astype(np.uint8)
     image = Image.fromarray(image)
     image.save(path)
 
-def save_disparity(disparity, path):
+def save_disparity(disparity: torch.Tensor, path: str):
     disparity = disparity.squeeze(0).squeeze(0).cpu().numpy()
     disparity = (disparity / np.max(disparity) * 255).astype(np.uint8)
     disparity_image = Image.fromarray(disparity)
     disparity_image.save(path)
+    
+def visualize_disparity(disparity: torch.Tensor):
+    plt.imshow(disparity.squeeze(0).squeeze(0).cpu().numpy(), cmap='gray')
+    plt.colorbar()
+    plt.show()
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -46,6 +52,13 @@ def main():
     model.eval()
     with torch.no_grad():
         reconstructed_right, _, disparity = model(left_image, right_image)
+        
+    print(f"{left_image.shape=}")
+    print(f"{reconstructed_right.shape=}")
+    print(f"{disparity.shape=}")
+    
+    visualize_disparity(disparity)
+    print(f"{disparity=}")
 
     save_image(reconstructed_right, "evals/reconstructed_right.png")
     save_disparity(disparity, "evals/disparity.png")

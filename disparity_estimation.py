@@ -36,17 +36,18 @@ class DisparityToImage(nn.Module):
     def forward(self, image: torch.Tensor, disparity_map: torch.Tensor, direction: str):
         batch_size, _, height, width = image.shape
 
-        x_base = torch.linspace(0, 1, width, device=image.device).repeat(
+        x_base = torch.linspace(-1, 1, width, device=image.device).repeat(
             batch_size, height, 1)
-        y_base = torch.linspace(0, 1, height, device=image.device).repeat(
+        y_base = torch.linspace(-1, 1, height, device=image.device).repeat(
             batch_size, width, 1).transpose(1, 2)
 
-        x_shifts = disparity_map.squeeze(1) / width
+        # normalize disparity map, same range as grid
+        x_shifts = disparity_map.squeeze(1) / (width / 2 )
 
         if direction == 'right':
-            x_new = x_base - x_shifts
-        elif direction == 'left':
             x_new = x_base + x_shifts
+        elif direction == 'left':
+            x_new = x_base - x_shifts
         else:
             raise ValueError(
                 f"Invalid direction {direction}. Use 'right' or 'left'.")
@@ -55,6 +56,6 @@ class DisparityToImage(nn.Module):
         grid = torch.stack((x_new, y_base), dim=-1).squeeze(1)
 
         warped_image = F.grid_sample(
-            image, grid, mode='bilinear', padding_mode='zeros', align_corners=False)
+            image, grid, mode='bilinear', padding_mode='zeros', align_corners=True)
 
         return warped_image
