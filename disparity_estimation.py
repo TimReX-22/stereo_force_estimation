@@ -5,6 +5,13 @@ from monodepth2.networks.resnet_encoder import ResnetEncoder
 from monodepth2.networks.depth_decoder import ModifiedDepthDecoder
 from simnet.lib.net.models.simplenet import DotProductCostVolume, SoftArgmin
 
+from enum import Enum
+
+
+class ImageDirection(Enum):
+    RIGHT = 1
+    LEFT = 2
+
 
 class DisparityEstimationNetwork(nn.Module):
     def __init__(self, num_layers: int, pretrained: bool, num_disparities: int = 64) -> None:
@@ -42,7 +49,7 @@ class DisparityToImage(nn.Module):
             batch_size, width, 1).transpose(1, 2)
 
         # normalize disparity map, same range as grid
-        x_shifts = disparity_map.squeeze(1) / (width / 2 )
+        x_shifts = disparity_map.squeeze(1) / (width / 2)
 
         if direction == 'right':
             x_new = x_base + x_shifts
