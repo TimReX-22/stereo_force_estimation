@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 import torch
 import torch.nn as nn
@@ -6,7 +7,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 
-from image_reconstruction import ImageReconstructionNetwork, ImageReconstructionConfig
+from image_reconstruction import ImageReconstructionNetwork, DisparityEstimationConfig
 from dataset import StereoDataset
 from loss import total_loss
 
@@ -14,29 +15,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 
-import constants
-
-
-def save_and_plot_losses(num_epochs, train_losses, test_losses, dir: str = "training_plots"):
-    os.makedirs(dir, exist_ok=True)
-
-    plot_file = os.path.join(dir, constants.LOSS_PLOT_FN)
-    loss_file = os.path.join(dir, constants.LOSSES_FN)
-
-    epochs = np.arange(1, num_epochs + 1)
-    plt.figure()
-    plt.plot(epochs, train_losses, label="Train Loss")
-    plt.plot(epochs, test_losses, label="Test Loss")
-    plt.xlabel("Epochs")
-    plt.ylabel("Loss")
-    plt.legend()
-    plt.savefig(plot_file)
-    plt.close()
-
-    with open(loss_file, "w") as f:
-        f.write("epoch, train_loss, test_loss\n")
-        for epoch, train_loss, test_loss in zip(epochs, train_losses, test_losses):
-            f.write(f"{epoch}, {train_loss:.4f}, {test_loss:.4f}\n")
+import util
 
 
 def main():
@@ -44,17 +23,15 @@ def main():
 
     # Hyperparameters
     num_layers = 18
-    pretrained = False
+    pretrained = True
     batch_size = 8
     num_epochs = 20
-    learning_rate = 1e-4
+    learning_rate = 1e-5
     num_disparities = 64
     train_test_split_ratio = 0.8
 
-    left_image_dirs = [
-        f"data/images/dec6_force_no_TA_lastP_randomPosHeight_cs100_run{run_nr}_left" for run_nr in range(1, 4)]
-    right_image_dirs = [
-        f"data/images/dec6_force_no_TA_lastP_randomPosHeight_cs100_run{run_nr}_right" for run_nr in range(1, 4)]
+    left_image_dirs = util.get_image_dirs(cam="left", runs=range(1, 4))
+    right_image_dirs = util.get_image_dirs(cam="right", runs=range(1, 4))
 
     # Transformations
     transform = transforms.Compose([
@@ -74,12 +51,12 @@ def main():
         "test": DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     }
 
-    config = ImageReconstructionConfig(num_layers, pretrained, num_disparities)
+    config = DisparityEstimationConfig(num_layers, pretrained, num_disparities)
     model = ImageReconstructionNetwork(config)
     model.to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=8, gamma=0.1)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
 
     train_losses = []
     test_losses = []
@@ -112,16 +89,17 @@ def main():
                 running_loss += loss.item() * batch_size
 
             epoch_loss = running_loss / len(dataloaders[phase].dataset)
-            print(f"{phase.capitalize()} Loss: {epoch_loss:.4f}")
 
             if phase == "train":
                 train_losses.append(epoch_loss)
             else:
                 test_losses.append(epoch_loss)
 
+        print(
+            f"Train Loss: {train_losses[-1]:.4f} \t Test Loss: {test_losses[-1]:.4f}")
         scheduler.step()
 
-    save_and_plot_losses(num_epochs, train_losses, test_losses)
+    util.save_and_plot_losses(num_epochs, train_losses, test_losses)
     torch.save(model.state_dict(), "weights/image_reconstruction_weights.pth")
 
 

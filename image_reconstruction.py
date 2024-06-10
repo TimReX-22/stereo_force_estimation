@@ -1,30 +1,26 @@
 import torch
 import torch.nn as nn
-from disparity_estimation import DisparityEstimationNetwork, DisparityToImage
+from disparity_estimation import DisparityEstimationNetwork, DisparityToImage, ImageDirection, DisparityEstimationConfig
 
 from dataclasses import dataclass
 from typing import Tuple
 
-@dataclass
-class ImageReconstructionConfig:
-    num_encoder_layers: int
-    pretrained_encoder: bool
-    
-    num_disparities: int = 64
 
 class ImageReconstructionNetwork(nn.Module):
-    def __init__(self, config: ImageReconstructionConfig) -> None:
+    def __init__(self, config: DisparityEstimationConfig) -> None:
         super().__init__()
-        self.disparity_model = DisparityEstimationNetwork(config.num_encoder_layers, config.pretrained_encoder, config.num_disparities)
+        self.disparity_model = DisparityEstimationNetwork(config)
         self.disp_to_image = DisparityToImage()
         self._initialize_weights()
-        
+
     def forward(self, left_image: torch.Tensor, right_image: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         disparity = self.disparity_model(left_image, right_image)
-        reconstructed_right = self.disp_to_image(left_image, disparity, direction="right")
-        reconstructed_left = self.disp_to_image(right_image, disparity, direction="left")
+        reconstructed_right = self.disp_to_image(
+            left_image, disparity, direction=ImageDirection.RIGHT)
+        reconstructed_left = self.disp_to_image(
+            right_image, disparity, direction=ImageDirection.LEFT)
         return reconstructed_right, reconstructed_left, disparity
-    
+
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
