@@ -10,9 +10,11 @@ from typing import Optional, List
 
 import pandas as pd
 
+import constants
+
 
 class StereoForceDataset(Dataset):
-    def __init__(self, force_files: List[str], transform: Optional[transforms.Compose] = None):
+    def __init__(self, force_files: List[str], transform: Optional[transforms.Compose] = None, scaler: Optional[MinMaxScaler] = None):
         self.left_images = []
         self.right_images = []
         self.forces = []
@@ -35,9 +37,16 @@ class StereoForceDataset(Dataset):
                     self.right_images.append(right_image_path)
                     self.forces.append(force)
 
+        if scaler is None:
+            self.scaler = MinMaxScaler(feature_range=(-1, 1))
+            self.forces = self.scaler.fit_transform(self.forces)
+            joblib.dump(self.scaler, constants.TARGET_SCALER_FN)
+
+        else:
+            self.forces = scaler.transform(self.forces)
+
         self.scaler = MinMaxScaler(feature_range=(-1, 1))
         self.forces = self.scaler.fit_transform(self.forces)
-        joblib.dump(self.scaler, 'transformations/target_scaler.pkl')
 
         assert len(self.left_images) == len(self.right_images) == len(
             self.forces), f"{len(self.left_images)=}, {len(self.forces)=}, {len(self.right_images)=}"

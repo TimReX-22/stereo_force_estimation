@@ -88,9 +88,7 @@ if __name__ == "__main__":
     interaction_force_model = ForcePredictionNetwork(
         disparity_config)
 
-    # Example tensor, replace with actual data
     left_image = torch.randn((1, 3, 256, 256))
-    # Example tensor, replace with actual data
     right_image = torch.randn((1, 3, 256, 256))
 
     interaction_force, reconstructed_right, reconstructed_left, disparity = interaction_force_model(

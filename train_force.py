@@ -10,10 +10,7 @@ from force_estimation_net import ForcePredictionNetwork
 from dataset import StereoForceDataset
 from loss import total_loss
 from tqdm import tqdm
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import constants
+
 import util
 
 
@@ -35,6 +32,7 @@ def combined_loss(left_image, right_image, reconstructed_right, reconstructed_le
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"[INFO] Training on device: {device}")
     # Hyperparameters
     num_layers = 18
     pretrained = True
