@@ -35,6 +35,7 @@ def main():
     print(f"[INFO] Training on device: {device}")
     # Hyperparameters
     num_layers = 18
+    backbone_resnet = 50
     pretrained = True
     batch_size = 8
     num_epochs = 10
@@ -61,7 +62,7 @@ def main():
         f"[INFO] Loaded Trainset with {train_size} samples and Testset with {test_size} samples!")
     disparity_config = DisparityEstimationConfig(
         num_layers, pretrained, num_disparities)
-    model = ForcePredictionNetwork(disparity_config)
+    model = ForcePredictionNetwork(disparity_config, backbone_resnet)
     model.to(device)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)

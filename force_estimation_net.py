@@ -34,14 +34,19 @@ class DownsampleDisparity(nn.Module):
 
 
 class ForcePredictionNetwork(nn.Module):
-    def __init__(self, disparity_config: DisparityEstimationConfig) -> None:
+    def __init__(self, disparity_config: DisparityEstimationConfig, backbone_resnet: int) -> None:
         super().__init__()
         self.disparity_model = DisparityEstimationNetwork(disparity_config)
         self.downsample_disparity = DownsampleDisparity()
         self.resnet_fpn = resnet_fpn_backbone(
             'resnet50', weights=ResNet50_Weights.DEFAULT)
-        self.resnet_fpn_large = resnet_fpn_backbone(
-            'resnet101', weights=ResNet101_Weights.DEFAULT)
+
+        resnet_map = {50: resnet_fpn_backbone(
+            'resnet50', weights=ResNet50_Weights.DEFAULT),
+            101: resnet_fpn_backbone(
+            'resnet101', weights=ResNet101_Weights.DEFAULT)}
+
+        self.resnet_fpn_large = resnet_map[backbone_resnet]
         self.conv_reduce_channels = nn.Conv2d(260, 3, kernel_size=1)
 
         self.fc = nn.Sequential(
