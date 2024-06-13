@@ -33,7 +33,6 @@ def main():
     left_image_dirs = util.get_image_dirs(cam="left", runs=range(1, 4))
     right_image_dirs = util.get_image_dirs(cam="right", runs=range(1, 4))
 
-    # Transformations
     transform = transforms.Compose([
         transforms.Resize((256, 256)),
         transforms.ToTensor()

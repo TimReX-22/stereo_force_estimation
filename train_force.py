@@ -38,11 +38,11 @@ def main():
     backbone_resnet = 50
     pretrained = True
     batch_size = 8
-    num_epochs = 10
+    num_epochs = 20
     learning_rate = 1e-5
     num_disparities = 64
     train_test_split_ratio = 0.8
-    force_files = util.get_force_files(runs=range(1, 4))
+    force_files = util.get_force_files(runs=range(1, 8))
 
     transform = transforms.Compose([
         transforms.Resize((256, 256)),
@@ -65,7 +65,7 @@ def main():
     model = ForcePredictionNetwork(disparity_config, backbone_resnet)
     model.to(device)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
     train_losses = []
     test_losses = []
